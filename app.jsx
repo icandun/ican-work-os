@@ -95,7 +95,7 @@ function App() {
 
   const screens = {
     dashboard: <Dashboard state={state} setState={setState} setRoute={setRoute} openTaskFromTriage={openTaskFromTriage} />,
-    triage: <Triage state={state} setState={setState} focusedId={focusedTriageId} clearFocused={clearFocused} />,
+    triage: <Triage state={state} setState={setState} focusedId={focusedTriageId} clearFocused={clearFocused} onStartedWork={() => setRoute("execution")} />,
     execution: <Execution state={state} setState={setState} />,
     report: <Report state={state} initialDate={reportDate} />,
     calendar: <CalendarScreen state={state} setState={setState} setRoute={setRoute} setReportDate={setReportDate} />,

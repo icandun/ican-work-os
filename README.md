@@ -89,14 +89,76 @@ Selamat — kode Anda sudah di GitHub! 🎉
 
 ## 🔄 Cara Update Aplikasi (kalau ada perubahan)
 
-Cara paling gampang (lewat web GitHub):
+**TL;DR: Update GitHub → Cloudflare auto-deploy dalam ±30 detik. Anda tidak perlu sentuh Cloudflare lagi.**
 
-1. Buka repo Anda di github.com
-2. Klik file yang mau diubah → klik ikon **pensil ✏️ di kanan atas**
-3. Edit isinya → scroll bawah → ketik commit message → **Commit changes**
-4. Cloudflare otomatis re-deploy dalam ±30 detik. Refresh URL pages.dev Anda.
+### Bagaimana auto-deploy bekerja
+Saat Anda hubungkan repo GitHub ke Cloudflare Pages, Cloudflare otomatis "mendengar" setiap perubahan di branch `main`. Begitu Anda commit perubahan, Cloudflare:
+1. Otomatis ambil versi terbaru dari GitHub
+2. Build ulang (cepat, karena project ini static — gak ada build step)
+3. Replace versi lama dengan yang baru di URL `xxx.pages.dev` Anda
 
-Cara upload file baru: Klik **Add file** → **Upload files**.
+**Total waktu: ±30 detik.** Tidak perlu klik apapun di Cloudflare.
+
+---
+
+### 📤 Update beberapa file sekaligus (PALING DIREKOMENDASIKAN)
+
+Cara ini paling cepat kalau ada banyak file berubah (seperti update versi terbaru):
+
+1. Buka repo Anda di **github.com/USERNAME/ican-work-os**
+2. Klik tombol **"Add file"** (di kanan, dekat tombol Code hijau) → pilih **"Upload files"**
+3. **Drag-and-drop file-file baru** ke kotak besar. Bisa banyak file sekaligus.
+4. **PENTING:** GitHub akan **otomatis menimpa (overwrite)** file lama dengan nama yang sama. Jadi kalau Anda upload `styles.css` versi baru, file `styles.css` lama langsung diganti — tidak perlu hapus dulu.
+5. Scroll ke bawah → isi **Commit changes message**: misalnya `Update versi terbaru` atau `Fix bug dark mode`
+6. Klik tombol hijau **Commit changes**
+7. Tunggu ±30 detik → buka URL `xxx.pages.dev` Anda → refresh (Ctrl+Shift+R untuk hard refresh) → perubahan sudah live ✓
+
+> 💡 **Tips:** Kalau Anda gak yakin file mana yang berubah, upload **semua** file project sekaligus. GitHub cukup pintar untuk hanya menyimpan yang benar-benar beda — yang sama akan dilewatkan.
+
+---
+
+### ✏️ Update satu file saja (lewat browser)
+
+Cocok untuk perbaikan kecil:
+
+1. Buka repo Anda di **github.com/USERNAME/ican-work-os**
+2. Klik nama file yang mau diubah (misal `index.html`)
+3. Klik ikon **pensil ✏️** di kanan atas tampilan file
+4. Edit isinya di editor browser
+5. Scroll ke bawah → kotak **"Commit changes"**:
+   - Isi pesan singkat, misal: `Fix typo di dashboard`
+   - Klik tombol hijau **Commit changes**
+6. Selesai! Tunggu ±30 detik → refresh URL `xxx.pages.dev`
+
+---
+
+### 📊 Cara cek status deploy
+
+Mau lihat apakah deploy sudah selesai?
+
+1. Buka **dash.cloudflare.com** → **Workers & Pages**
+2. Klik project Anda → tab **Deployments**
+3. Lihat list — yang paling atas adalah deploy terbaru
+4. Status:
+   - 🟡 **Building** = sedang proses (15–30 detik)
+   - 🟢 **Success** = sudah live, refresh website Anda
+   - 🔴 **Failed** = ada error, klik untuk lihat detail (jarang terjadi untuk project static seperti ini)
+
+### 🗑 Hapus file
+Buka file di GitHub → klik ikon tong sampah 🗑️ di kanan atas → Commit changes.
+
+### 📁 Hapus folder
+Buka folder → buka file di dalamnya satu per satu → hapus semuanya → folder otomatis ikut hilang (GitHub tidak menyimpan folder kosong).
+
+### Branch lain
+Kalau Anda mau coba perubahan tanpa kena production:
+- Bikin branch baru di GitHub (misal `coba-fitur`)
+- Cloudflare akan deploy ke URL preview seperti `coba-fitur.ican-work-os.pages.dev`
+- Production tetap aman di `ican-work-os.pages.dev`
+- Kalau puas, merge branch ke `main` → production ter-update otomatis
+
+### Update via HP
+Bisa! Buka **github.com** di browser HP → edit file persis sama caranya. Cloudflare auto-deploy juga jalan dari HP.
 
 ---
 

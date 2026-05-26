@@ -6,6 +6,7 @@ function Execution({ state, setState }) {
 
   const [viewDate, setViewDate] = useState(L.todayKey());
   const [editing, setEditing] = useState(null);
+  const [stopPrompt, setStopPrompt] = useState(null);
   const [qsCompany, setQsCompany] = useState(state.companies[0] || "Tarda");
   const [qsCategory, setQsCategory] = useState((state.subcats[state.companies[0]] || [])[0] || "");
   const [qsTask, setQsTask] = useState("");
@@ -91,6 +92,7 @@ function Execution({ state, setState }) {
   const stopNow = (id) => {
     const now = new Date();
     const t = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const entry = execLog.find((e) => e.id === id);
     setState((s) => ({
       ...s,
       execLog: s.execLog.map((e) => {
@@ -99,6 +101,31 @@ function Execution({ state, setState }) {
         return { ...e, end: t, duration: dur, status: "Selesai" };
       }),
     }));
+    // If this exec came from a Triage task, show a modal asking what to do with the triage task
+    if (entry && entry.triageId) {
+      setTimeout(() => setStopPrompt({ execEntry: entry }), 200);
+    }
+  };
+
+  const handleStopChoice = (choice) => {
+    const { execEntry } = stopPrompt;
+    setStopPrompt(null);
+    if (choice === "done") {
+      setState((s) => ({
+        ...s,
+        triage: s.triage.map((tr) => tr.id === execEntry.triageId
+          ? { ...tr, status: "✅ Selesai", completedAt: L.todayKey() }
+          : tr),
+      }));
+    } else if (choice === "pause") {
+      setState((s) => ({
+        ...s,
+        triage: s.triage.map((tr) => tr.id === execEntry.triageId
+          ? { ...tr, status: "🤔 Dipikirkan" }
+          : tr),
+      }));
+    }
+    // "stay" → do nothing, task remains in Dikerjakan
   };
 
   const isToday = viewDate === L.todayKey();
@@ -176,6 +203,35 @@ function Execution({ state, setState }) {
       </Card>
 
       {editing && <ExecEditor entry={editing} onSave={saveEntry} onClose={() => setEditing(null)} />}
+
+      {stopPrompt && (
+        <Modal open onClose={() => setStopPrompt(null)} title="Aktivitas selesai">
+          <div className="wo-stop-prompt">
+            <p className="wo-stop-prompt-task">
+              <span className="wo-eyebrow">Tugas dari Triage</span>
+              <strong>{stopPrompt.execEntry.task}</strong>
+            </p>
+            <p className="wo-stop-prompt-question">Apa status tugas ini sekarang di Triage?</p>
+            <div className="wo-stop-prompt-options">
+              <button className="wo-stop-prompt-opt is-done" onClick={() => handleStopChoice("done")}>
+                <span className="wo-stop-prompt-opt-icon">✅</span>
+                <strong>Selesai</strong>
+                <span>Pindahkan ke kolom Done</span>
+              </button>
+              <button className="wo-stop-prompt-opt is-pause" onClick={() => handleStopChoice("pause")}>
+                <span className="wo-stop-prompt-opt-icon">⏸</span>
+                <strong>Belum selesai, jeda dulu</strong>
+                <span>Balikkan ke Dipikirkan</span>
+              </button>
+              <button className="wo-stop-prompt-opt is-stay" onClick={() => handleStopChoice("stay")}>
+                <span className="wo-stop-prompt-opt-icon">🏃</span>
+                <strong>Lanjut nanti</strong>
+                <span>Tetap di Dikerjakan</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

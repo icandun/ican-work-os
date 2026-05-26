@@ -1,7 +1,7 @@
 // Triage / Brain Dump screen
 // 3-column kanban: Dipikirkan → Dikerjakan → Selesai (Done)
 // User explicitly asked: ketika selesai pindah ke kolom Done supaya tidak menumpuk.
-function Triage({ state, setState, focusedId, clearFocused }) {
+function Triage({ state, setState, focusedId, clearFocused, onStartedWork }) {
   const { triage } = state;
   const L = window.WORKOS_LIB;
   const D = window.WORKOS_DATA;
@@ -10,7 +10,6 @@ function Triage({ state, setState, focusedId, clearFocused }) {
   const [filterPri, setFilterPri] = useState("Semua");
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null);
-  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     if (focusedId) {
@@ -24,7 +23,6 @@ function Triage({ state, setState, focusedId, clearFocused }) {
     if (filterCo !== "Semua" && t.company !== filterCo) return false;
     if (filterPri !== "Semua" && t.priority !== filterPri) return false;
     if (search && !t.task.toLowerCase().includes(search.toLowerCase())) return false;
-    if (!showArchived && t.status === "🗂️ Diarsip") return false;
     return true;
   });
 
@@ -32,17 +30,63 @@ function Triage({ state, setState, focusedId, clearFocused }) {
     { key: "🤔 Dipikirkan", label: "🤔 Dipikirkan", hint: "Yang perlu diputuskan" },
     { key: "🏃 Dikerjakan", label: "🏃 Dikerjakan", hint: "Sedang in progress" },
     { key: "✅ Selesai", label: "✅ Done", hint: "Tugas selesai (auto-pindah ke sini)" },
+    { key: "🗂️ Diarsip", label: "🗂️ Arsip", hint: "Riwayat tugas lama" },
   ];
 
   const byCol = (key) => filtered.filter((t) => t.status === key);
 
   const setStatus = (id, status) => {
-    setState((s) => ({
-      ...s,
-      triage: s.triage.map((t) => t.id === id
+    setState((s) => {
+      const task = s.triage.find((t) => t.id === id);
+      if (!task) return s;
+
+      const updatedTriage = s.triage.map((t) => t.id === id
         ? { ...t, status, completedAt: status === "✅ Selesai" ? L.todayKey() : t.completedAt }
-        : t),
-    }));
+        : t);
+
+      // When moving INTO "🏃 Dikerjakan" — auto-create an Execution Log entry
+      // and start the timer, so the user doesn't have to retype the task.
+      if (status === "🏃 Dikerjakan" && task.status !== "🏃 Dikerjakan") {
+        let execLog = s.execLog;
+
+        // Stop any currently running entry first
+        const running = execLog.find((e) => e.status === "Berjalan");
+        if (running) {
+          const d = new Date();
+          const stopT = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+          const dur = running.start ? Math.max(0, L.timeToMinutes(stopT) - L.timeToMinutes(running.start)) : 0;
+          execLog = execLog.map((e) => e.id === running.id
+            ? { ...e, end: stopT, duration: dur, status: "Selesai" }
+            : e);
+        }
+
+        const now = new Date();
+        const start = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        const newExec = {
+          id: `ex-${Date.now()}`,
+          triageId: task.id,
+          date: L.todayKey(),
+          start,
+          end: "",
+          duration: 0,
+          company: task.company || "",
+          category: task.category || "",
+          task: task.task,
+          status: "Berjalan",
+          note: task.note || "",
+          isMeeting: !!task.isMeeting,
+        };
+
+        return { ...s, triage: updatedTriage, execLog: [...execLog, newExec] };
+      }
+
+      return { ...s, triage: updatedTriage };
+    });
+
+    // Auto-switch to Execution screen when starting work
+    if (status === "🏃 Dikerjakan" && onStartedWork) {
+      setTimeout(() => onStartedWork(), 100);
+    }
   };
 
   const toggleDone = (t) => {
@@ -102,10 +146,6 @@ function Triage({ state, setState, focusedId, clearFocused }) {
           <option>Semua</option>
           {D.PRIORITY.map((p) => <option key={p}>{p}</option>)}
         </Select>
-        <label className="wo-toggle">
-          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
-          <span>Tampilkan arsip ({archivedCount})</span>
-        </label>
       </div>
 
       {/* Mobile-only column tabs */}
