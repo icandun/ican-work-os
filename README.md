@@ -190,6 +190,22 @@ calendar.jsx       # Layar Kalender
 config.jsx         # Layar Config (Perusahaan/Sub-Kategori/Tema)
 ```
 
+## ☁ Sync Antar Device (Optional)
+
+Karena data tersimpan di browser, normalnya **tidak sync** antara HP dan laptop. Kalau Anda butuh data Anda muncul di semua device, aktifkan **Google Drive Sync**:
+
+1. Buka tab **Config** di app → scroll ke section **"☁ Sync via Google Drive"**
+2. Ikuti panduan langkah-per-langkah di dalam app (klik "▶ Cara dapat Google OAuth Client ID")
+3. Setup ±5 menit one-time di [console.cloud.google.com](https://console.cloud.google.com/) (gratis)
+4. Setelah connect, data otomatis sync setiap ±3 detik setelah perubahan
+5. Di device lain, paste Client ID yang sama → Connect → data dari Drive langsung muncul
+
+**Privasi:** Data tersimpan di "App Data" folder Drive yang **tidak kelihatan** di Drive normal Anda. Hanya app ini yang bisa baca.
+
+**Penting:** URL Cloudflare Pages Anda (`https://xxx.pages.dev`) harus di-add ke **Authorized JavaScript origins** di Google Cloud Console — kalau ganti URL, update juga di sana.
+
+---
+
 ## 💾 Backup Data
 
 Karena data di localStorage browser, kalau Anda:

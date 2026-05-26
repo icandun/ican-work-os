@@ -10,7 +10,10 @@ function loadState() {
 }
 
 function saveState(state) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  try {
+    const stamped = { ...state, _lastModified: Date.now() };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stamped));
+  } catch (e) {}
 }
 
 function clearState() { localStorage.removeItem(STORAGE_KEY); }

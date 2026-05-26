@@ -792,6 +792,88 @@ a { color: inherit; }
 }
 .wo-theme-toggle:hover { background: rgba(255,255,255,0.06); color: #FAFAF7; border-color: #52525B; }
 
+/* ---- Google Drive Sync section ---- */
+.wo-gdrive { display: flex; flex-direction: column; gap: 14px; }
+.wo-gdrive-intro { font-size: 13.5px; color: var(--ink-2); line-height: 1.5; margin: 0; }
+.wo-gdrive-status {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  font-size: 13.5px;
+}
+.wo-status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+.wo-status-dot.is-on { background: #10B981; box-shadow: 0 0 0 3px rgba(16,185,129,0.18); }
+.wo-status-dot.is-off { background: #A1A1AA; }
+.wo-status-dot.is-syncing { background: #F59E0B; animation: pulse 1.2s ease-in-out infinite; box-shadow: 0 0 0 0 rgba(245,158,11,0.7); }
+.wo-gdrive-note { font-size: 12px; color: var(--ink-3); margin: 0; }
+.wo-gdrive-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.wo-gdrive-error {
+  background: #FEE2E2; border: 1px solid #FECACA; color: #991B1B;
+  padding: 10px 12px; border-radius: 8px; font-size: 12.5px; margin: 0;
+}
+body[data-theme="dark"] .wo-gdrive-error { background: #2D0E0E; border-color: #7F1D1D; color: #FCA5A5; }
+
+.wo-gdrive-help-wrap {
+  border-top: 1px dashed var(--line-2);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+.wo-gdrive-help-wrap summary {
+  cursor: pointer;
+  font-size: 13px; font-weight: 500;
+  color: var(--ink-2);
+  padding: 4px 0;
+  list-style: none;
+  user-select: none;
+}
+.wo-gdrive-help-wrap summary::-webkit-details-marker { display: none; }
+.wo-gdrive-help-wrap summary:hover { color: var(--accent); }
+
+.wo-gdrive-help {
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  margin-top: 10px;
+}
+.wo-gdrive-help-intro { font-size: 13px; color: var(--ink-2); margin: 0 0 12px; }
+.wo-gdrive-help ol { list-style: decimal; padding-left: 22px; display: flex; flex-direction: column; gap: 12px; }
+.wo-gdrive-help ol li { font-size: 13px; line-height: 1.55; color: var(--ink-2); }
+.wo-gdrive-help ol > li::marker { color: var(--accent); font-weight: 700; }
+.wo-gdrive-help ul { list-style: disc; padding-left: 22px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.wo-gdrive-help ul li { font-size: 12.5px; }
+.wo-gdrive-help code {
+  background: var(--bg-2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink);
+  word-break: break-all;
+}
+.wo-gdrive-help a { color: var(--accent); text-decoration: underline; }
+.wo-gdrive-help strong { color: var(--ink); }
+.wo-gdrive-url {
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+}
+.wo-gdrive-url code { background: transparent; padding: 0; font-size: 12px; color: var(--accent); font-weight: 600; }
+.wo-gdrive-help-note {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  background: var(--tarda-bg);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
 /* ---- Stop prompt modal ---- */
 .wo-stop-prompt { display: flex; flex-direction: column; gap: 16px; }
 .wo-stop-prompt-task { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--line-2); }

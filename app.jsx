@@ -44,6 +44,47 @@ function App() {
   const [focusedTriageId, setFocusedTriageId] = useState(null);
   const [reportDate, setReportDate] = useState(L.todayKey());
 
+  // Sync state to Google Drive — debounced & only if connected
+  const syncTimerRef = useRef(null);
+  const lastSyncedAtRef = useRef(0);
+
+  useEffect(() => {
+    const sync = window.WORKOS_SYNC;
+
+    // Initial setup if user has saved a client ID
+    if (sync.clientId) {
+      (async () => {
+        await sync.setup(sync.clientId);
+        const tok = await sync.silentConnect();
+        if (!tok) return; // silent failed; user needs to click Connect from Config
+
+        // Compare Drive's data with local; use newer
+        try {
+          const driveData = await sync.download();
+          if (!driveData) return;
+          const driveTime = driveData._syncedAt || 0;
+          const localTime = state._lastModified || 0;
+          // Drive is meaningfully newer (more than 2 seconds) → adopt it
+          if (driveTime > localTime + 2000) {
+            const { _syncedAt, _lastModified, ...rest } = driveData;
+            setState((s) => ({ ...s, ...rest, _lastModified: driveTime }));
+          }
+        } catch (e) { console.warn("Drive sync init:", e); }
+      })();
+    }
+  }, []);
+
+  useEffect(() => {
+    const sync = window.WORKOS_SYNC;
+    if (!sync.clientId || (sync.status !== "connected" && sync.status !== "syncing")) return;
+
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      sync.upload({ ...state, _lastModified: Date.now() }).catch((e) => console.warn("Sync upload:", e));
+    }, 2500);
+    return () => clearTimeout(syncTimerRef.current);
+  }, [state]);
+
   // Auto-archive: Done items older than 30 days slide to archive
   useEffect(() => {
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
