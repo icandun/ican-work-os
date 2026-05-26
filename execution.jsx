@@ -273,7 +273,10 @@ function ExecRow({ entry: e, onEdit, onDelete, onStart, onStop }) {
         <div className="wo-tl-bar-fill" />
       </div>
       <div className="wo-tl-main" onClick={onEdit}>
-        <div className="wo-tl-task">{e.task || <span className="wo-muted">Tanpa judul</span>}</div>
+        <div className="wo-tl-task">
+          {e.triageId && <span className="wo-tl-from-triage" title="Dari Triage">🧠</span>}
+          {e.task || <span className="wo-muted">Tanpa judul</span>}
+        </div>
         <div className="wo-tl-meta">
           <CompanyBadge company={e.company} />
           <Badge color="neutral">{e.category}</Badge>

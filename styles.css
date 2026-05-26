@@ -479,6 +479,7 @@ a { color: inherit; }
 .wo-tl-bar[data-co="Pribadi"] { background: var(--prib-strong); }
 .wo-tl-main { min-width: 0; cursor: pointer; }
 .wo-tl-task { font-weight: 500; font-size: 14px; }
+.wo-tl-from-triage { display: inline-block; margin-right: 6px; font-size: 12px; opacity: 0.75; }
 .wo-tl-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
 .wo-tl-note { font-size: 11px; color: var(--ink-3); font-style: italic; }
 .wo-tl-actions { display: flex; gap: 6px; align-items: center; }

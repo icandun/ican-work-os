@@ -60,6 +60,31 @@ function App() {
     if (changed) setState((s) => ({ ...s, triage: next }));
   }, []);
 
+  // Backfill: any triage task in "Dikerjakan" today without an Execution entry → create one
+  useEffect(() => {
+    const today = L.todayKey();
+    const missing = state.triage.filter((t) =>
+      t.status === "🏃 Dikerjakan" &&
+      !state.execLog.some((e) => e.triageId === t.id && e.date === today)
+    );
+    if (missing.length === 0) return;
+    const newEntries = missing.map((t) => ({
+      id: `ex-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${t.id}`,
+      triageId: t.id,
+      date: today,
+      start: "",
+      end: "",
+      duration: 0,
+      company: t.company || "",
+      category: t.category || "",
+      task: t.task,
+      status: "Belum",
+      note: t.note || "",
+      isMeeting: !!t.isMeeting,
+    }));
+    setState((s) => ({ ...s, execLog: [...s.execLog, ...newEntries] }));
+  }, []);
+
   const openTaskFromTriage = (id) => { setFocusedTriageId(id); setRoute("triage"); };
   const clearFocused = () => setFocusedTriageId(null);
 

@@ -35,57 +35,46 @@ function Triage({ state, setState, focusedId, clearFocused, onStartedWork }) {
 
   const byCol = (key) => filtered.filter((t) => t.status === key);
 
+  // Ensure a triage task in "Dikerjakan" has a matching Execution Log entry today.
+  // Called whenever a task moves into Dikerjakan (via Mulai button OR edit modal).
+  // Creates entry with status "Belum" — user presses ▶ Play when ready to start.
+  const ensureExecutionEntry = (task) => {
+    const today = L.todayKey();
+    const existing = state.execLog.find((e) => e.triageId === task.id && e.date === today);
+    if (existing) return; // already created today
+
+    const newExec = {
+      id: `ex-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      triageId: task.id,
+      date: today,
+      start: "",
+      end: "",
+      duration: 0,
+      company: task.company || "",
+      category: task.category || "",
+      task: task.task,
+      status: "Belum",
+      note: task.note || "",
+      isMeeting: !!task.isMeeting,
+    };
+    setState((s) => ({ ...s, execLog: [...s.execLog, newExec] }));
+  };
+
   const setStatus = (id, status) => {
-    setState((s) => {
-      const task = s.triage.find((t) => t.id === id);
-      if (!task) return s;
+    const task = state.triage.find((t) => t.id === id);
+    if (!task) return;
+    const wasDikerjakan = task.status === "🏃 Dikerjakan";
 
-      const updatedTriage = s.triage.map((t) => t.id === id
+    setState((s) => ({
+      ...s,
+      triage: s.triage.map((t) => t.id === id
         ? { ...t, status, completedAt: status === "✅ Selesai" ? L.todayKey() : t.completedAt }
-        : t);
+        : t),
+    }));
 
-      // When moving INTO "🏃 Dikerjakan" — auto-create an Execution Log entry
-      // and start the timer, so the user doesn't have to retype the task.
-      if (status === "🏃 Dikerjakan" && task.status !== "🏃 Dikerjakan") {
-        let execLog = s.execLog;
-
-        // Stop any currently running entry first
-        const running = execLog.find((e) => e.status === "Berjalan");
-        if (running) {
-          const d = new Date();
-          const stopT = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-          const dur = running.start ? Math.max(0, L.timeToMinutes(stopT) - L.timeToMinutes(running.start)) : 0;
-          execLog = execLog.map((e) => e.id === running.id
-            ? { ...e, end: stopT, duration: dur, status: "Selesai" }
-            : e);
-        }
-
-        const now = new Date();
-        const start = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-        const newExec = {
-          id: `ex-${Date.now()}`,
-          triageId: task.id,
-          date: L.todayKey(),
-          start,
-          end: "",
-          duration: 0,
-          company: task.company || "",
-          category: task.category || "",
-          task: task.task,
-          status: "Berjalan",
-          note: task.note || "",
-          isMeeting: !!task.isMeeting,
-        };
-
-        return { ...s, triage: updatedTriage, execLog: [...execLog, newExec] };
-      }
-
-      return { ...s, triage: updatedTriage };
-    });
-
-    // Auto-switch to Execution screen when starting work
-    if (status === "🏃 Dikerjakan" && onStartedWork) {
-      setTimeout(() => onStartedWork(), 100);
+    if (status === "🏃 Dikerjakan" && !wasDikerjakan) {
+      ensureExecutionEntry(task);
+      if (onStartedWork) setTimeout(() => onStartedWork(), 120);
     }
   };
 
@@ -104,11 +93,20 @@ function Triage({ state, setState, focusedId, clearFocused, onStartedWork }) {
   const archive = (id) => setStatus(id, "🗂️ Diarsip");
 
   const saveTask = (taskData) => {
+    const existing = state.triage.find((t) => t.id === taskData.id);
+    const wasNotDikerjakan = !existing || existing.status !== "🏃 Dikerjakan";
+    const isNowDikerjakan = taskData.status === "🏃 Dikerjakan";
+
     setState((s) => {
-      const exists = s.triage.find((t) => t.id === taskData.id);
-      if (exists) return { ...s, triage: s.triage.map((t) => t.id === taskData.id ? taskData : t) };
+      if (existing) return { ...s, triage: s.triage.map((t) => t.id === taskData.id ? taskData : t) };
       return { ...s, triage: [taskData, ...s.triage] };
     });
+
+    // If user just moved this task into Dikerjakan via the edit modal, mirror to Execution
+    if (isNowDikerjakan && wasNotDikerjakan) {
+      ensureExecutionEntry(taskData);
+      if (onStartedWork) setTimeout(() => onStartedWork(), 120);
+    }
     setEditing(null);
   };
 
