@@ -177,7 +177,12 @@ function Config({ state, setState }) {
         </div>
       </Card>
 
-      <GoogleDriveSection state={state} setState={setState} />
+      <BackupSection state={state} setState={setState} />
+
+      <details className="wo-gdrive-advanced">
+        <summary>⚙ Advanced: Sync otomatis via Google Drive (opsional)</summary>
+        <GoogleDriveSection state={state} setState={setState} />
+      </details>
 
       <Card title="🔧 Lainnya">
         <div className="wo-cfg-misc">
@@ -218,6 +223,234 @@ function Config({ state, setState }) {
 }
 
 window.Config = Config;
+
+function BackupSection({ state, setState }) {
+  const L = window.WORKOS_LIB;
+  const [mode, setMode] = useState(null); // null | 'export' | 'import'
+  const [code, setCode] = useState("");
+  const [pasted, setPasted] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const dataCounts = {
+    triage: state.triage?.length || 0,
+    execLog: state.execLog?.length || 0,
+    lastModified: state._lastModified,
+  };
+
+  const buildPayload = () => {
+    const payload = {
+      triage: state.triage,
+      execLog: state.execLog,
+      companies: state.companies,
+      subcats: state.subcats,
+      theme: state.theme,
+      _exportedAt: Date.now(),
+      _version: 1,
+    };
+    return JSON.stringify(payload);
+  };
+
+  const openExport = () => {
+    const json = buildPayload();
+    // Encode to base64 for safer copy-paste (no special chars to mess things up)
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    setCode(`WORKOS:${b64}`);
+    setMode("export");
+    setCopied(false);
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      // Fallback: select the textarea text
+      const ta = document.getElementById("wo-export-textarea");
+      if (ta) { ta.select(); document.execCommand("copy"); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    }
+  };
+
+  const handleDownload = () => {
+    const json = buildPayload();
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const today = L.todayKey();
+    a.href = url;
+    a.download = `workos-backup-${today}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const parseImport = (raw) => {
+    let text = raw.trim();
+    if (text.startsWith("WORKOS:")) {
+      text = text.slice(7).trim();
+      try { text = decodeURIComponent(escape(atob(text))); }
+      catch (e) { throw new Error("Kode tidak valid atau rusak."); }
+    }
+    let data;
+    try { data = JSON.parse(text); }
+    catch (e) { throw new Error("Data tidak bisa dibaca (bukan format yang benar)."); }
+    if (!data.triage || !Array.isArray(data.triage) || !data.execLog || !Array.isArray(data.execLog)) {
+      throw new Error("Data tidak lengkap (tidak ada Triage/Execution).");
+    }
+    return data;
+  };
+
+  const handleImportFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = parseImport(String(reader.result));
+        confirmImport(data);
+      } catch (err) {
+        alert("Gagal: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ""; // allow re-selecting same file
+  };
+
+  const handleImportPaste = () => {
+    if (!pasted.trim()) return alert("Paste data dulu.");
+    try {
+      const data = parseImport(pasted);
+      confirmImport(data);
+    } catch (err) {
+      alert("Gagal: " + err.message);
+    }
+  };
+
+  const confirmImport = (data) => {
+    const fmt = (t) => t ? new Date(t).toLocaleString("id-ID") : "—";
+    const ok = confirm(
+      `Data yang akan diimport:\n` +
+      `• ${data.triage.length} tugas\n` +
+      `• ${data.execLog.length} aktivitas\n` +
+      `• Export: ${fmt(data._exportedAt)}\n\n` +
+      `Data device ini sekarang:\n` +
+      `• ${dataCounts.triage} tugas\n` +
+      `• ${dataCounts.execLog} aktivitas\n` +
+      `• Modif terakhir: ${fmt(dataCounts.lastModified)}\n\n` +
+      `[OK] = TIMPA semua data dengan import\n` +
+      `[Cancel] = Batal`
+    );
+    if (!ok) return;
+    setState((s) => ({
+      ...s,
+      triage: data.triage,
+      execLog: data.execLog,
+      companies: data.companies || s.companies,
+      subcats: data.subcats || s.subcats,
+      theme: data.theme || s.theme,
+      _lastModified: Date.now(),
+    }));
+    setMode(null);
+    setPasted("");
+    alert("✓ Data berhasil diimport!");
+  };
+
+  return (
+    <Card title="🔄 Sync Antar Device — Cara Mudah">
+      <div className="wo-backup">
+        <p className="wo-backup-intro">
+          Pindahkan data dari laptop ke HP (atau sebaliknya) lewat kode atau file. Tinggal <strong>Export</strong> di satu device → <strong>Import</strong> di device lain.
+        </p>
+
+        <div className="wo-backup-stats">
+          <div className="wo-backup-stat">
+            <span className="wo-eyebrow">Data saat ini</span>
+            <strong>{dataCounts.triage} tugas · {dataCounts.execLog} aktivitas</strong>
+          </div>
+        </div>
+
+        <div className="wo-backup-actions">
+          <Btn variant="primary" onClick={openExport}>📤 Export</Btn>
+          <Btn variant="dark" onClick={() => { setMode("import"); setPasted(""); }}>📥 Import</Btn>
+        </div>
+
+        {mode === "export" && (
+          <Modal open onClose={() => setMode(null)} title="📤 Export data" wide>
+            <div className="wo-backup-modal">
+              <p>Pilih salah satu cara untuk pindahin ke device lain:</p>
+
+              <div className="wo-backup-option">
+                <div className="wo-backup-option-head">
+                  <h4>Cara 1: Copy kode → kirim ke HP via WhatsApp / Email / Notes</h4>
+                </div>
+                <textarea
+                  id="wo-export-textarea"
+                  className="wo-input wo-textarea wo-backup-code"
+                  value={code}
+                  readOnly
+                  rows={5}
+                  onClick={(e) => e.target.select()}
+                />
+                <Btn variant="primary" onClick={handleCopy}>
+                  {copied ? "✓ Tersalin!" : "📋 Copy ke clipboard"}
+                </Btn>
+                <p className="wo-backup-hint">Di device tujuan: buka Config → Import → paste di kotak.</p>
+              </div>
+
+              <div className="wo-backup-divider">— atau —</div>
+
+              <div className="wo-backup-option">
+                <div className="wo-backup-option-head">
+                  <h4>Cara 2: Download file backup (.json)</h4>
+                </div>
+                <Btn variant="dark" onClick={handleDownload}>💾 Download file</Btn>
+                <p className="wo-backup-hint">Cocok untuk backup arsip. Transfer file ke device lain (AirDrop/email/cloud drive) → Import.</p>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {mode === "import" && (
+          <Modal open onClose={() => setMode(null)} title="📥 Import data" wide>
+            <div className="wo-backup-modal">
+              <div className="wo-backup-warning">
+                ⚠ Data device ini ({dataCounts.triage} tugas + {dataCounts.execLog} aktivitas) akan <strong>diganti</strong> dengan data import.
+              </div>
+
+              <div className="wo-backup-option">
+                <div className="wo-backup-option-head">
+                  <h4>Cara 1: Paste kode</h4>
+                </div>
+                <textarea
+                  className="wo-input wo-textarea"
+                  value={pasted}
+                  onChange={(e) => setPasted(e.target.value)}
+                  placeholder="Paste kode yang dimulai dengan WORKOS:… di sini"
+                  rows={5}
+                  autoFocus
+                />
+                <Btn variant="primary" onClick={handleImportPaste} disabled={!pasted.trim()}>📥 Import dari kode</Btn>
+              </div>
+
+              <div className="wo-backup-divider">— atau —</div>
+
+              <div className="wo-backup-option">
+                <div className="wo-backup-option-head">
+                  <h4>Cara 2: Pilih file backup (.json)</h4>
+                </div>
+                <label className="wo-backup-file">
+                  <input type="file" accept=".json,application/json" onChange={handleImportFile} hidden />
+                  <span>📁 Pilih file…</span>
+                </label>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 function GoogleDriveSection({ state, setState }) {
   const sync = window.WORKOS_SYNC;

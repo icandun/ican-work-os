@@ -792,6 +792,68 @@ a { color: inherit; }
 }
 .wo-theme-toggle:hover { background: rgba(255,255,255,0.06); color: #FAFAF7; border-color: #52525B; }
 
+/* ---- Backup / Export-Import ---- */
+.wo-backup { display: flex; flex-direction: column; gap: 14px; }
+.wo-backup-intro { font-size: 13.5px; color: var(--ink-2); line-height: 1.55; margin: 0; }
+.wo-backup-stats { display: flex; gap: 10px; }
+.wo-backup-stat { flex: 1; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.wo-backup-stat strong { font-size: 14px; font-weight: 500; color: var(--ink); }
+.wo-backup-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.wo-backup-actions .wo-btn { flex: 1; justify-content: center; padding: 12px 16px; font-size: 14px; }
+
+.wo-backup-modal { display: flex; flex-direction: column; gap: 18px; }
+.wo-backup-modal > p { font-size: 13.5px; color: var(--ink-2); margin: 0; }
+.wo-backup-warning {
+  padding: 12px 14px;
+  background: #FEF3C7;
+  border: 1px solid #FDE68A;
+  color: #92400E;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+body[data-theme="dark"] .wo-backup-warning { background: #2D1F05; border-color: #78350F; color: #FDE68A; }
+
+.wo-backup-option { display: flex; flex-direction: column; gap: 10px; padding: 16px; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 12px; }
+.wo-backup-option-head h4 { font-size: 14px; font-weight: 600; color: var(--ink); margin: 0; }
+.wo-backup-code { font-family: var(--font-mono); font-size: 11px; background: var(--bg-2) !important; line-height: 1.4; word-break: break-all; }
+.wo-backup-hint { font-size: 11.5px; color: var(--ink-3); margin: 0; line-height: 1.4; }
+.wo-backup-divider { text-align: center; color: var(--ink-3); font-size: 12px; font-weight: 500; padding: 4px 0; }
+.wo-backup-file {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 12px 16px;
+  background: var(--ink); color: #FAFAF7;
+  border-radius: 10px; font-size: 14px; font-weight: 500;
+  cursor: pointer;
+  transition: all 0.14s;
+  align-self: flex-start;
+}
+.wo-backup-file:hover { background: #000; }
+body[data-theme="dark"] .wo-backup-file { background: #FAFAF7; color: #18181B; }
+body[data-theme="dark"] .wo-backup-file:hover { background: #E4E4E7; }
+
+.wo-gdrive-advanced {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.wo-gdrive-advanced > summary {
+  cursor: pointer;
+  padding: 14px 20px;
+  font-size: 13.5px; font-weight: 500;
+  color: var(--ink-2);
+  user-select: none;
+  list-style: none;
+  border-bottom: 1px solid transparent;
+}
+.wo-gdrive-advanced > summary::-webkit-details-marker { display: none; }
+.wo-gdrive-advanced > summary::before { content: "▶ "; font-size: 10px; color: var(--ink-3); }
+.wo-gdrive-advanced[open] > summary::before { content: "▼ "; }
+.wo-gdrive-advanced[open] > summary { border-bottom-color: var(--line-2); }
+.wo-gdrive-advanced > .wo-card { border: 0; box-shadow: none; border-radius: 0; }
+.wo-gdrive-advanced > .wo-card .wo-card-head { display: none; }
+
 /* ---- Google Drive Sync section ---- */
 .wo-gdrive { display: flex; flex-direction: column; gap: 14px; }
 .wo-gdrive-intro { font-size: 13.5px; color: var(--ink-2); line-height: 1.5; margin: 0; }
