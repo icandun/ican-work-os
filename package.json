@@ -1,0 +1,13 @@
+{
+  "name": "ican-work-os",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "wrangler check",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.100.0"
+  }
+}

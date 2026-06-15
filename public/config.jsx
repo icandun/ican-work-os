@@ -179,10 +179,7 @@ function Config({ state, setState }) {
 
       <BackupSection state={state} setState={setState} />
 
-      <details className="wo-gdrive-advanced">
-        <summary>⚙ Advanced: Sync otomatis via Google Drive (opsional)</summary>
-        <GoogleDriveSection state={state} setState={setState} />
-      </details>
+      <CloudSyncSection />
 
       <Card title="🔧 Lainnya">
         <div className="wo-cfg-misc">
@@ -223,6 +220,21 @@ function Config({ state, setState }) {
 }
 
 window.Config = Config;
+
+function CloudSyncSection() {
+  return (
+    <Card title="☁ Sync otomatis">
+      <div className="wo-gdrive">
+        <p className="wo-gdrive-intro">
+          Sync sekarang memakai login Google di tombol kanan atas. Setelah login, data Work OS disimpan ke cloud dan otomatis tersedia di HP/MacBook dengan akun Google yang sama.
+        </p>
+        <p className="wo-gdrive-note">
+          Export/Import di bawah tetap disimpan sebagai backup manual cadangan.
+        </p>
+      </div>
+    </Card>
+  );
+}
 
 function BackupSection({ state, setState }) {
   const L = window.WORKOS_LIB;
@@ -449,185 +461,5 @@ function BackupSection({ state, setState }) {
         )}
       </div>
     </Card>
-  );
-}
-
-function GoogleDriveSection({ state, setState }) {
-  const sync = window.WORKOS_SYNC;
-  const [snap, setSnap] = useState(sync.snapshot());
-  const [clientIdInput, setClientIdInput] = useState(sync.clientId);
-  const [showHelp, setShowHelp] = useState(false);
-
-  useEffect(() => sync.on(setSnap), []);
-
-  const handleSaveClientId = async () => {
-    const id = clientIdInput.trim();
-    if (!id) return;
-    await sync.setup(id);
-  };
-
-  const handleConnect = async () => {
-    try {
-      await sync.connect();
-      const driveData = await sync.download();
-      if (driveData) {
-        const driveTime = driveData._syncedAt || 0;
-        const localTime = state._lastModified || 0;
-        const fmt = (t) => t ? new Date(t).toLocaleString("id-ID") : "—";
-        const choice = confirm(
-          `Data sudah ada di Google Drive Anda:\n` +
-          `• ${driveData.triage?.length || 0} tugas, ${driveData.execLog?.length || 0} aktivitas\n` +
-          `• Sync terakhir: ${fmt(driveTime)}\n\n` +
-          `Data di device ini:\n` +
-          `• ${state.triage?.length || 0} tugas, ${state.execLog?.length || 0} aktivitas\n` +
-          `• Modif terakhir: ${fmt(localTime)}\n\n` +
-          `[OK] = Pakai data DRIVE (timpa data device ini)\n` +
-          `[Cancel] = Pakai data DEVICE INI (timpa Drive)`
-        );
-        if (choice) {
-          const { _syncedAt, _lastModified, ...rest } = driveData;
-          setState((s) => ({ ...s, ...rest, _lastModified: driveTime }));
-        } else {
-          await sync.upload({ ...state, _lastModified: Date.now() });
-        }
-      } else {
-        await sync.upload({ ...state, _lastModified: Date.now() });
-      }
-    } catch (e) {
-      alert("Gagal connect: " + (e.error_description || e.error || e.message || JSON.stringify(e)));
-    }
-  };
-
-  const handleDisconnect = () => {
-    if (!confirm("Disconnect dari Google Drive? Data lokal tetap aman.")) return;
-    sync.disconnect();
-  };
-
-  const handleResetClientId = () => {
-    if (!confirm("Hapus Client ID? Anda perlu paste lagi untuk pakai sync.")) return;
-    sync.clearClientId();
-    setClientIdInput("");
-  };
-
-  const handleSyncNow = async () => {
-    try {
-      await sync.upload({ ...state, _lastModified: Date.now() });
-    } catch (e) {
-      alert("Sync gagal: " + (e.message || JSON.stringify(e)));
-    }
-  };
-
-  const isConnected = snap.status === "connected" || snap.status === "syncing";
-  const hasClientId = !!snap.clientId;
-  const fmtRel = (t) => {
-    if (!t) return "belum pernah";
-    const diff = (Date.now() - t) / 1000;
-    if (diff < 60) return "barusan";
-    if (diff < 3600) return `${Math.floor(diff/60)} menit lalu`;
-    if (diff < 86400) return `${Math.floor(diff/3600)} jam lalu`;
-    return new Date(t).toLocaleString("id-ID");
-  };
-
-  return (
-    <Card title="☁ Sync via Google Drive">
-      <div className="wo-gdrive">
-        <p className="wo-gdrive-intro">
-          Sync data antar device (HP ↔ laptop) lewat Google Drive Anda. Data disimpan di area <strong>App Data</strong> private — <strong>tidak kelihatan di Drive normal Anda</strong>, hanya app ini yang bisa akses.
-        </p>
-
-        {!hasClientId && (
-          <>
-            <Field label="Google OAuth Client ID" hint="Tempel Client ID dari Google Cloud Console (lihat panduan di bawah).">
-              <Input
-                value={clientIdInput}
-                onChange={(e) => setClientIdInput(e.target.value)}
-                placeholder="123456789-abc...apps.googleusercontent.com"
-              />
-            </Field>
-            <div className="wo-gdrive-actions">
-              <Btn variant="primary" onClick={handleSaveClientId} disabled={!clientIdInput.trim()}>Simpan Client ID</Btn>
-            </div>
-          </>
-        )}
-
-        {hasClientId && !isConnected && (
-          <>
-            <p className="wo-gdrive-status">
-              <span className="wo-status-dot is-off"></span>
-              Client ID sudah disimpan, belum login Google.
-            </p>
-            <div className="wo-gdrive-actions">
-              <Btn variant="primary" onClick={handleConnect}>🔗 Login & Connect Google Drive</Btn>
-              <Btn variant="ghost" size="sm" onClick={handleResetClientId}>Ganti Client ID</Btn>
-            </div>
-            {snap.errorMsg && <p className="wo-gdrive-error">⚠ {snap.errorMsg}</p>}
-          </>
-        )}
-
-        {isConnected && (
-          <>
-            <p className="wo-gdrive-status">
-              <span className={classes("wo-status-dot", snap.status === "syncing" ? "is-syncing" : "is-on")}></span>
-              <strong>{snap.status === "syncing" ? "Sedang sync…" : "Tersambung ke Google Drive"}</strong>
-              <span className="wo-eyebrow"> · Sync terakhir: {fmtRel(snap.lastSyncedAt)}</span>
-            </p>
-            <p className="wo-gdrive-note">Data otomatis sync setiap ada perubahan (±3 detik delay).</p>
-            <div className="wo-gdrive-actions">
-              <Btn variant="primary" size="sm" onClick={handleSyncNow}>Sync sekarang</Btn>
-              <Btn variant="ghost" size="sm" onClick={handleDisconnect}>Disconnect</Btn>
-            </div>
-          </>
-        )}
-
-        <details className="wo-gdrive-help-wrap" open={!hasClientId && showHelp}>
-          <summary onClick={(e) => { e.preventDefault(); setShowHelp(!showHelp); }}>
-            {showHelp ? "▼" : "▶"} Cara dapat Google OAuth Client ID (gratis, sekali setup ±5 menit)
-          </summary>
-          {showHelp && <GoogleSetupHelp />}
-        </details>
-      </div>
-    </Card>
-  );
-}
-
-function GoogleSetupHelp() {
-  const url = location.origin;
-  return (
-    <div className="wo-gdrive-help">
-      <p className="wo-gdrive-help-intro">
-        Ini sekali aja. Buka di laptop biar gampang copy-paste.
-      </p>
-      <ol>
-        <li>Buka <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer">console.cloud.google.com</a>, login pakai akun Google yang Anda mau pakai untuk sync.</li>
-        <li>Di atas, klik dropdown project → <strong>NEW PROJECT</strong> → Project name: <code>Ican Work OS</code> → <strong>CREATE</strong>. Tunggu sebentar, lalu pilih project itu.</li>
-        <li>Menu kiri (☰) → <strong>APIs &amp; Services</strong> → <strong>Library</strong> → cari "Google Drive API" → klik → <strong>ENABLE</strong>.</li>
-        <li>Menu kiri → <strong>APIs &amp; Services</strong> → <strong>OAuth consent screen</strong>:
-          <ul>
-            <li>User Type: <strong>External</strong> → <strong>CREATE</strong></li>
-            <li>App name: <code>Ican Work OS</code> · User support email: email Anda · Developer contact: email Anda → <strong>SAVE AND CONTINUE</strong></li>
-            <li>Scopes → <strong>SAVE AND CONTINUE</strong> (skip)</li>
-            <li>Test users → <strong>+ ADD USERS</strong> → masukkan email Google Anda → <strong>ADD</strong> → <strong>SAVE AND CONTINUE</strong></li>
-          </ul>
-        </li>
-        <li>Menu kiri → <strong>APIs &amp; Services</strong> → <strong>Credentials</strong> → <strong>+ CREATE CREDENTIALS</strong> → <strong>OAuth client ID</strong>:
-          <ul>
-            <li>Application type: <strong>Web application</strong></li>
-            <li>Name: <code>Work OS Web</code></li>
-            <li><strong>Authorized JavaScript origins</strong> → klik <strong>+ ADD URI</strong> → paste URL berikut (URL website Anda saat ini):
-              <div className="wo-gdrive-url"><code>{url}</code></div>
-              <span className="wo-eyebrow">Penting: jangan ada slash <code>/</code> di akhir!</span>
-            </li>
-            <li>Klik <strong>CREATE</strong></li>
-          </ul>
-        </li>
-        <li>Popup muncul dengan <strong>Your Client ID</strong> — copy nilai panjang yang diakhiri <code>.apps.googleusercontent.com</code>.</li>
-        <li>Paste di kolom Client ID di atas → klik <strong>Simpan Client ID</strong> → klik <strong>Login &amp; Connect</strong>.</li>
-        <li>Popup login Google muncul → pilih akun → klik <strong>Continue</strong> (mungkin ada warning "App not verified" karena ini project pribadi Anda — itu wajar, klik Advanced → Go to Ican Work OS (unsafe). Aman, karena ini app Anda sendiri.) → <strong>Allow</strong>.</li>
-        <li>Selesai. Buka app ini di HP/laptop lain → Config → paste Client ID yang sama → Connect → data otomatis sync. 🎉</li>
-      </ol>
-      <p className="wo-gdrive-help-note">
-        💡 <strong>Tips:</strong> Kalau Anda punya 2 URL (misal localhost untuk test + pages.dev untuk production), <strong>tambahkan keduanya</strong> di Authorized JavaScript origins. Bisa edit Credentials kapan saja.
-      </p>
-    </div>
   );
 }

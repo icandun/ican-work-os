@@ -1,29 +1,26 @@
 // Root app: state, routing, nav (sidebar desktop / bottom mobile)
+function normalizeWorkosState(data, D, fallback = {}) {
+  return {
+    triage: Array.isArray(data?.triage) ? data.triage : (fallback.triage || D.SEED_TRIAGE),
+    execLog: Array.isArray(data?.execLog) ? data.execLog : (fallback.execLog || D.SEED_EXEC),
+    companies: Array.isArray(data?.companies) ? data.companies : (fallback.companies || D.COMPANIES_DEFAULT),
+    subcats: data?.subcats && typeof data.subcats === "object" ? data.subcats : (fallback.subcats || D.SUBCATS_DEFAULT),
+    onboardingDismissed: Boolean(data?.onboardingDismissed ?? fallback.onboardingDismissed),
+    theme: data?.theme || fallback.theme || "light",
+  };
+}
+
 function App() {
   const L = window.WORKOS_LIB;
   const D = window.WORKOS_DATA;
 
   const [state, setState] = useState(() => {
     const saved = L.loadState();
-    if (saved && saved.triage && saved.execLog) {
-      return {
-        triage: saved.triage,
-        execLog: saved.execLog,
-        companies: saved.companies || D.COMPANIES_DEFAULT,
-        subcats: saved.subcats || D.SUBCATS_DEFAULT,
-        onboardingDismissed: !!saved.onboardingDismissed,
-        theme: saved.theme || "light",
-      };
-    }
-    return {
-      triage: D.SEED_TRIAGE,
-      execLog: D.SEED_EXEC,
-      companies: D.COMPANIES_DEFAULT,
-      subcats: D.SUBCATS_DEFAULT,
-      onboardingDismissed: false,
-      theme: "light",
-    };
+    if (saved && saved.triage && saved.execLog) return normalizeWorkosState(saved, D);
+    return normalizeWorkosState(null, D);
   });
+  const stateRef = useRef(state);
+  const cloudSyncRef = useRef(null);
 
   // Sync master lists to legacy globals so existing screens see latest values during render
   D.COMPANIES = state.companies;
@@ -37,53 +34,27 @@ function App() {
   const toggleTheme = () => setState((s) => ({ ...s, theme: s.theme === "dark" ? "light" : "dark" }));
 
   useEffect(() => { L.saveState(state); }, [state]);
+  useEffect(() => { stateRef.current = state; }, [state]);
+  useEffect(() => {
+    if (!window.ICAN_CLOUD_SYNC) return;
+    cloudSyncRef.current = window.ICAN_CLOUD_SYNC.init({
+      appId: "ican-work-os",
+      label: "Ican Work OS",
+      getLocalState: () => stateRef.current,
+      setLocalState: (data) => setState((current) => normalizeWorkosState(data, D, current)),
+      normalizeState: (data) => normalizeWorkosState(data, D, stateRef.current),
+    });
+    return () => cloudSyncRef.current?.destroy?.();
+  }, []);
+  useEffect(() => {
+    cloudSyncRef.current?.scheduleSave(state);
+  }, [state]);
 
   const [route, setRoute] = useState(() => location.hash.replace("#", "") || "dashboard");
   useEffect(() => { location.hash = route; }, [route]);
 
   const [focusedTriageId, setFocusedTriageId] = useState(null);
   const [reportDate, setReportDate] = useState(L.todayKey());
-
-  // Sync state to Google Drive — debounced & only if connected
-  const syncTimerRef = useRef(null);
-  const lastSyncedAtRef = useRef(0);
-
-  useEffect(() => {
-    const sync = window.WORKOS_SYNC;
-
-    // Initial setup if user has saved a client ID
-    if (sync.clientId) {
-      (async () => {
-        await sync.setup(sync.clientId);
-        const tok = await sync.silentConnect();
-        if (!tok) return; // silent failed; user needs to click Connect from Config
-
-        // Compare Drive's data with local; use newer
-        try {
-          const driveData = await sync.download();
-          if (!driveData) return;
-          const driveTime = driveData._syncedAt || 0;
-          const localTime = state._lastModified || 0;
-          // Drive is meaningfully newer (more than 2 seconds) → adopt it
-          if (driveTime > localTime + 2000) {
-            const { _syncedAt, _lastModified, ...rest } = driveData;
-            setState((s) => ({ ...s, ...rest, _lastModified: driveTime }));
-          }
-        } catch (e) { console.warn("Drive sync init:", e); }
-      })();
-    }
-  }, []);
-
-  useEffect(() => {
-    const sync = window.WORKOS_SYNC;
-    if (!sync.clientId || (sync.status !== "connected" && sync.status !== "syncing")) return;
-
-    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-    syncTimerRef.current = setTimeout(() => {
-      sync.upload({ ...state, _lastModified: Date.now() }).catch((e) => console.warn("Sync upload:", e));
-    }, 2500);
-    return () => clearTimeout(syncTimerRef.current);
-  }, [state]);
 
   // Auto-archive: Done items older than 30 days slide to archive
   useEffect(() => {
