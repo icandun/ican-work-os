@@ -20,8 +20,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "ican-sync-cloud-test-db",
-      "database_id": "0b8f568a-efbc-4df2-aadb-150c2bf0a0a1",
+      "database_name": "ican-sync-db",
+      "database_id": "acb49a46-8c86-4cb1-93b0-a32972656852",
       "migrations_dir": "migrations"
     }
   ]

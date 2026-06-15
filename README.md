@@ -37,10 +37,10 @@ GitHub Secrets yang dibutuhkan:
 
 Cloudflare D1 yang dipakai:
 
-- Database name: `ican-sync-cloud-test-db`
-- Database id: `0b8f568a-efbc-4df2-aadb-150c2bf0a0a1`
+- Database name: `ican-sync-db`
+- Database id: `acb49a46-8c86-4cb1-93b0-a32972656852`
 
-Database ini berisi data/history sync terbaru, jadi jangan dihapus saat cleanup app test.
+Database ini adalah database final untuk data/history sync terbaru, jadi jangan dihapus.
 
 ## URL
 
