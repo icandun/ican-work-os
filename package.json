@@ -8,7 +8,6 @@
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "@cloudflare/workerd-darwin-arm64": "^1.20260611.1",
     "wrangler": "^4.100.0"
   }
 }
