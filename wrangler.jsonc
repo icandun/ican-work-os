@@ -1,0 +1,28 @@
+{
+  "name": "ican-work-os",
+  "main": "worker/index.js",
+  "account_id": "f60422e42cb56485b6697307cb83bfa7",
+  "compatibility_date": "2026-06-15",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "html_handling": "auto-trailing-slash",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "vars": {
+    "GOOGLE_CLIENT_ID": "311622140199-eu755haquqmta91sm6ja5u6nvd5ronqt.apps.googleusercontent.com",
+    "ALLOWED_ORIGINS": "https://ican-work-os.icandun.workers.dev,https://habit-ican.pages.dev",
+    "ALLOW_DEV_AUTH": "false"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ican-sync-cloud-test-db",
+      "database_id": "0b8f568a-efbc-4df2-aadb-150c2bf0a0a1",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+node_modules/
+.wrangler/
+.wrangler-config/
+.wrangler-cache/
+.wrangler-state/
+.dev.vars
+.env
+.env.*
+*.log
+
+# Personal data and database backups stay outside GitHub.
+data-backup/
+*.sql
+!migrations/*.sql
+*.sqlite
+*.sqlite3
+*.db

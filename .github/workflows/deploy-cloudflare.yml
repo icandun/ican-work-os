@@ -1,0 +1,43 @@
+name: Deploy Work OS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-ican-work-os
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Worker
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set session secret
+        env:
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        run: |
+          test -n "$SESSION_SECRET"
+          printf "%s" "$SESSION_SECRET" | npx wrangler secret put SESSION_SECRET
+
+      - name: Deploy Worker
+        run: npm run deploy
