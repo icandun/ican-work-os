@@ -38,12 +38,5 @@ jobs:
       - name: Apply D1 migrations
         run: npx wrangler d1 migrations apply ican-sync-db --remote
 
-      - name: Set session secret
-        env:
-          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-        run: |
-          test -n "$SESSION_SECRET"
-          printf "%s" "$SESSION_SECRET" | npx wrangler secret put SESSION_SECRET
-
       - name: Deploy Worker
         run: npm run deploy
