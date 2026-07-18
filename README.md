@@ -42,6 +42,16 @@ Cloudflare D1 yang dipakai:
 
 Database ini adalah database final untuk data/history sync terbaru, jadi jangan dihapus.
 
+## Reliability dan Recovery
+
+- Update state memakai revision compare-and-swap atomik. Dua device dengan `baseRevision` sama menghasilkan satu sukses dan satu konflik `409`.
+- Payload Habit Ican divalidasi sampai level habit, addon, tanggal, dan nilai check.
+- Setiap perubahan menyimpan version snapshot; 20 versi terbaru dipertahankan.
+- Endpoint recovery tersedia pada `/api/apps/:appId/versions` dan `/api/apps/:appId/versions/:revision/restore`.
+- Session JWT berlaku 12 jam. Frontend mempertahankan data lokal ketika sesi kedaluwarsa dan melanjutkan sync setelah login ulang.
+
+Sebelum setiap deploy Production yang menyentuh D1, export `ican-sync-db` dan simpan backup JSON bertimestamp di folder pribadi yang tidak masuk GitHub. Workflow deploy menjalankan unit test dan migration sebelum Worker dipublikasikan.
+
 ## URL
 
 - Work OS: https://ican-work-os.icandun.workers.dev/
