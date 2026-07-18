@@ -4,11 +4,12 @@
   "type": "module",
   "scripts": {
     "check": "wrangler check",
+    "test": "node --test tests/state.test.js",
+    "test:integration": "node tests/integration.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "@cloudflare/workerd-darwin-arm64": "^1.20260611.1",
     "wrangler": "^4.100.0"
   }
 }

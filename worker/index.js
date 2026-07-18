@@ -1,6 +1,9 @@
+import { validateAppState } from "./state.js";
+
 const VALID_APPS = new Set(["habit-ican", "ican-work-os"]);
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+const SESSION_TTL_SECONDS = 60 * 60 * 12;
 const MAX_DOCUMENT_BYTES = 2 * 1024 * 1024;
+const MAX_VERSIONS = 20;
 
 export default {
   async fetch(request, env) {
@@ -89,10 +92,36 @@ async function handleApi(request, env, url) {
       if (encodedSize > MAX_DOCUMENT_BYTES) {
         return json({ error: "document_too_large", maxBytes: MAX_DOCUMENT_BYTES }, 413, request, env);
       }
+      const validation = validateAppState(appId, data);
+      if (!validation.ok) {
+        return json({ error: "invalid_schema", reason: validation.code, path: validation.path }, 400, request, env);
+      }
       const saved = await saveDocument(env, user.id, appId, data, body.baseRevision);
       if (saved.conflict) return json(saved, 409, request, env);
       return json(saved, 200, request, env);
     }
+  }
+
+  const versionsMatch = pathname.match(/^\/api\/apps\/([^/]+)\/versions$/);
+  if (request.method === "GET" && versionsMatch) {
+    const appId = versionsMatch[1];
+    if (!VALID_APPS.has(appId)) return json({ error: "unknown_app" }, 404, request, env);
+    const user = await requireUser(request, env);
+    const limit = Math.max(1, Math.min(20, Number(url.searchParams.get("limit") || 10)));
+    const versions = await listVersions(env, user.id, appId, limit);
+    return json({ appId, versions }, 200, request, env);
+  }
+
+  const restoreMatch = pathname.match(/^\/api\/apps\/([^/]+)\/versions\/(\d+)\/restore$/);
+  if (request.method === "POST" && restoreMatch) {
+    const appId = restoreMatch[1];
+    if (!VALID_APPS.has(appId)) return json({ error: "unknown_app" }, 404, request, env);
+    const user = await requireUser(request, env);
+    const body = await readJson(request);
+    const restored = await restoreVersion(env, user.id, appId, Number(restoreMatch[2]), body.baseRevision);
+    if (!restored) return json({ error: "version_not_found" }, 404, request, env);
+    if (restored.conflict) return json(restored, 409, request, env);
+    return json(restored, 200, request, env);
   }
 
   return json({ error: "not_found" }, 404, request, env);
@@ -135,24 +164,76 @@ async function getDocument(env, userId, appId) {
 
 async function saveDocument(env, userId, appId, data, baseRevision) {
   const current = await getDocument(env, userId, appId);
-  if (current && baseRevision != null && Number(baseRevision) !== Number(current.revision)) {
+  if (current && (baseRevision == null || Number(baseRevision) !== Number(current.revision))) {
     return { conflict: true, remote: current };
   }
 
   const now = Date.now();
-  const revision = current ? current.revision + 1 : 1;
   const serialized = JSON.stringify(data);
+  let saved;
 
-  await env.DB.prepare(`
-    INSERT INTO app_documents (user_id, app_id, data, revision, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT(user_id, app_id) DO UPDATE SET
-      data = excluded.data,
-      revision = excluded.revision,
-      updated_at = excluded.updated_at
-  `).bind(userId, appId, serialized, revision, now, now).run();
+  if (!current) {
+    if (baseRevision != null && Number(baseRevision) !== 0) {
+      return { conflict: true, remote: null };
+    }
+    saved = await env.DB.prepare(`
+      INSERT INTO app_documents (user_id, app_id, data, revision, created_at, updated_at)
+      VALUES (?, ?, ?, 1, ?, ?)
+      ON CONFLICT(user_id, app_id) DO NOTHING
+      RETURNING revision, updated_at
+    `).bind(userId, appId, serialized, now, now).first();
+  } else {
+    saved = await env.DB.prepare(`
+      UPDATE app_documents
+      SET data = ?, revision = revision + 1, updated_at = ?
+      WHERE user_id = ? AND app_id = ? AND revision = ?
+      RETURNING revision, updated_at
+    `).bind(serialized, now, userId, appId, Number(baseRevision)).first();
+  }
 
-  return { exists: true, appId, data, revision, updatedAt: now };
+  if (!saved) {
+    return { conflict: true, remote: await getDocument(env, userId, appId) };
+  }
+
+  await recordVersion(env, userId, appId, saved.revision, serialized, now);
+  return { exists: true, appId, data, revision: saved.revision, updatedAt: saved.updated_at };
+}
+
+async function recordVersion(env, userId, appId, revision, serialized, createdAt) {
+  await env.DB.batch([
+    env.DB.prepare(`
+      INSERT OR IGNORE INTO app_document_versions (user_id, app_id, revision, data, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(userId, appId, revision, serialized, createdAt),
+    env.DB.prepare(`
+      DELETE FROM app_document_versions
+      WHERE user_id = ? AND app_id = ? AND revision NOT IN (
+        SELECT revision FROM app_document_versions
+        WHERE user_id = ? AND app_id = ?
+        ORDER BY revision DESC LIMIT ?
+      )
+    `).bind(userId, appId, userId, appId, MAX_VERSIONS),
+  ]);
+}
+
+async function listVersions(env, userId, appId, limit) {
+  const result = await env.DB.prepare(`
+    SELECT revision, created_at, LENGTH(data) AS bytes
+    FROM app_document_versions
+    WHERE user_id = ? AND app_id = ?
+    ORDER BY revision DESC
+    LIMIT ?
+  `).bind(userId, appId, limit).all();
+  return result.results || [];
+}
+
+async function restoreVersion(env, userId, appId, revision, baseRevision) {
+  const row = await env.DB.prepare(`
+    SELECT data FROM app_document_versions
+    WHERE user_id = ? AND app_id = ? AND revision = ?
+  `).bind(userId, appId, revision).first();
+  if (!row) return null;
+  return saveDocument(env, userId, appId, JSON.parse(row.data), baseRevision);
 }
 
 async function verifyGoogleCredential(credential, env) {
