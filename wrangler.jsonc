@@ -14,7 +14,7 @@
   },
   "vars": {
     "GOOGLE_CLIENT_ID": "311622140199-eu755haquqmta91sm6ja5u6nvd5ronqt.apps.googleusercontent.com",
-    "ALLOWED_ORIGINS": "https://ican-work-os.icandun.workers.dev,https://habit-ican.pages.dev",
+    "ALLOWED_ORIGINS": "https://ican-work-os.icandun.workers.dev,https://habit-ican.pages.dev,https://541efc39.habit-ican.pages.dev",
     "ALLOW_DEV_AUTH": "false"
   },
   "d1_databases": [
