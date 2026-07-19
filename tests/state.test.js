@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateAppState } from "../worker/state.js";
+import { SESSION_TTL_SECONDS } from "../worker/index.js";
+
+test("keeps a signed-in device active for 30 days", () => {
+  assert.equal(SESSION_TTL_SECONDS, 60 * 60 * 24 * 30);
+});
 
 const validHabit = {
   habits: [{
