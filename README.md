@@ -48,7 +48,8 @@ Database ini adalah database final untuk data/history sync terbaru, jadi jangan 
 - Payload Habit Ican divalidasi sampai level habit, addon, tanggal, dan nilai check.
 - Setiap perubahan menyimpan version snapshot; 20 versi terbaru dipertahankan.
 - Endpoint recovery tersedia pada `/api/apps/:appId/versions` dan `/api/apps/:appId/versions/:revision/restore`.
-- Session JWT berlaku 12 jam. Frontend mempertahankan data lokal ketika sesi kedaluwarsa dan melanjutkan sync setelah login ulang.
+- Session JWT berlaku 30 hari. Frontend memperbaruinya otomatis ketika masa aktif tinggal kurang dari 7 hari, mempertahankan data lokal ketika sesi benar-benar kedaluwarsa, dan melanjutkan sync setelah login ulang.
+- Endpoint pembaruan sesi tersedia pada `POST /api/auth/refresh` dan hanya menerima session JWT yang masih valid.
 
 Sebelum setiap deploy Production yang menyentuh D1, export `ican-sync-db` dan simpan backup JSON bertimestamp di folder pribadi yang tidak masuk GitHub. Workflow deploy menjalankan unit test dan migration sebelum Worker dipublikasikan.
 

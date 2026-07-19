@@ -1,7 +1,7 @@
 import { validateAppState } from "./state.js";
 
 const VALID_APPS = new Set(["habit-ican", "ican-work-os"]);
-const SESSION_TTL_SECONDS = 60 * 60 * 12;
+export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const MAX_DOCUMENT_BYTES = 2 * 1024 * 1024;
 const MAX_VERSIONS = 20;
 
@@ -48,6 +48,12 @@ async function handleApi(request, env, url) {
     await upsertUser(env, profile);
     const token = await createSessionToken(profile, env);
     return json({ token, user: publicUser(profile) }, 200, request, env);
+  }
+
+  if (request.method === "POST" && pathname === "/api/auth/refresh") {
+    const user = await requireUser(request, env);
+    const token = await createSessionToken(user, env);
+    return json({ token, user: publicUser(user) }, 200, request, env);
   }
 
   if (request.method === "POST" && pathname === "/api/auth/dev") {
