@@ -4,6 +4,7 @@ const VALID_APPS = new Set(["habit-ican", "ican-work-os"]);
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const MAX_DOCUMENT_BYTES = 2 * 1024 * 1024;
 const MAX_VERSIONS = 20;
+const UNIFIED_WORK_URL = "https://habit-ican.pages.dev/work/";
 
 export default {
   async fetch(request, env) {
@@ -15,6 +16,9 @@ export default {
       if (url.pathname.startsWith("/api/")) {
         return await handleApi(request, env, url);
       }
+      if (shouldRedirectToUnifiedApp(request, url)) {
+        return Response.redirect(UNIFIED_WORK_URL, 308);
+      }
       return env.ASSETS.fetch(request);
     } catch (error) {
       if (error instanceof HttpError) {
@@ -24,6 +28,11 @@ export default {
     }
   },
 };
+
+function shouldRedirectToUnifiedApp(request, url) {
+  if (!["GET", "HEAD"].includes(request.method)) return false;
+  return url.pathname === "/" || request.headers.get("Sec-Fetch-Mode") === "navigate";
+}
 
 async function handleApi(request, env, url) {
   const { pathname } = url;
