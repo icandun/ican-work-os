@@ -1,4 +1,4 @@
-import { validateAppState } from "./state.js";
+import { normalizeAppState, validateAppState } from "./state.js";
 
 const VALID_APPS = new Set(["habit-ican", "ican-work-os"]);
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -99,11 +99,11 @@ async function handleApi(request, env, url) {
 
     if (request.method === "PUT") {
       const body = await readJson(request);
-      const data = body.data;
-      const encodedSize = new TextEncoder().encode(JSON.stringify(data)).length;
-      if (!data || typeof data !== "object" || Array.isArray(data)) {
+      if (!body.data || typeof body.data !== "object" || Array.isArray(body.data)) {
         return json({ error: "invalid_data" }, 400, request, env);
       }
+      const data = normalizeAppState(appId, body.data);
+      const encodedSize = new TextEncoder().encode(JSON.stringify(data)).length;
       if (encodedSize > MAX_DOCUMENT_BYTES) {
         return json({ error: "document_too_large", maxBytes: MAX_DOCUMENT_BYTES }, 413, request, env);
       }
@@ -185,6 +185,9 @@ async function saveDocument(env, userId, appId, data, baseRevision) {
 
   const now = Date.now();
   const serialized = JSON.stringify(data);
+  if (current && serialized === JSON.stringify(current.data)) {
+    return current;
+  }
   let saved;
 
   if (!current) {
