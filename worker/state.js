@@ -8,6 +8,23 @@ export function validateAppState(appId, data) {
   return invalid("unknown_app");
 }
 
+export function normalizeAppState(appId, data) {
+  if (appId !== "ican-work-os" || !isPlainObject(data) || !Array.isArray(data.execLog)) {
+    return data;
+  }
+
+  const execLog = data.execLog.filter((entry) => !isEmptyTriagePlaceholder(entry));
+  return execLog.length === data.execLog.length ? data : { ...data, execLog };
+}
+
+function isEmptyTriagePlaceholder(entry) {
+  return Boolean(entry?.triageId) &&
+    entry.status === "Belum" &&
+    !entry.start &&
+    !entry.end &&
+    (Number(entry.duration) || 0) === 0;
+}
+
 function validateHabitState(data) {
   if (!Array.isArray(data.habits)) return invalid("habits_must_be_array");
   if (!isPlainObject(data.checks)) return invalid("checks_must_be_object");

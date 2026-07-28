@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateAppState } from "../worker/state.js";
+import { normalizeAppState, validateAppState } from "../worker/state.js";
 import { SESSION_TTL_SECONDS } from "../worker/index.js";
 
 test("keeps a signed-in device active for 30 days", () => {
@@ -36,4 +36,43 @@ test("rejects malformed habits", () => {
   const bad = structuredClone(validHabit);
   bad.habits[0].points = "10";
   assert.equal(validateAppState("habit-ican", bad).code, "invalid_habit_points");
+});
+
+test("removes only empty triage placeholders from Work state", () => {
+  const finished = {
+    id: "finished",
+    triageId: "triage-a",
+    status: "Selesai",
+    start: "09:00",
+    end: "10:30",
+    duration: 90,
+  };
+  const placeholder = {
+    id: "placeholder",
+    triageId: "triage-a",
+    status: "Belum",
+    start: "",
+    end: "",
+    duration: 0,
+  };
+  const manualPending = {
+    id: "manual-pending",
+    status: "Belum",
+    start: "",
+    end: "",
+    duration: 0,
+  };
+  const state = { triage: [], execLog: [finished, placeholder, manualPending] };
+
+  const normalized = normalizeAppState("ican-work-os", state);
+
+  assert.deepEqual(normalized.execLog, [finished, manualPending]);
+  assert.deepEqual(normalized.execLog[0], finished);
+});
+
+test("leaves Habit state and clean Work state unchanged", () => {
+  assert.equal(normalizeAppState("habit-ican", validHabit), validHabit);
+
+  const clean = { triage: [], execLog: [{ id: "running", triageId: "t", status: "Berjalan", start: "09:00", duration: 0 }] };
+  assert.equal(normalizeAppState("ican-work-os", clean), clean);
 });
