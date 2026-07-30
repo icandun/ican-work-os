@@ -1,4 +1,5 @@
 import { normalizeAppState, validateAppState } from "./state.js";
+import { prepareWorkTimerDocument, TimerPolicyError } from "./work-timer-guard.js";
 
 const VALID_APPS = new Set(["habit-ican", "ican-work-os"]);
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -23,6 +24,9 @@ export default {
     } catch (error) {
       if (error instanceof HttpError) {
         return json({ error: error.code, message: error.message }, error.status, request, env);
+      }
+      if (error instanceof TimerPolicyError) {
+        return json({ error: error.code, message: error.message }, 422, request, env);
       }
       return json({ error: "internal_error", message: error.message }, 500, request, env);
     }
@@ -183,8 +187,9 @@ async function saveDocument(env, userId, appId, data, baseRevision) {
     return { conflict: true, remote: current };
   }
 
+  const prepared = appId === "ican-work-os" ? prepareWorkTimerDocument(current?.data, data) : data;
   const now = Date.now();
-  const serialized = JSON.stringify(data);
+  const serialized = JSON.stringify(prepared);
   if (current && serialized === JSON.stringify(current.data)) {
     return current;
   }
@@ -214,7 +219,7 @@ async function saveDocument(env, userId, appId, data, baseRevision) {
   }
 
   await recordVersion(env, userId, appId, saved.revision, serialized, now);
-  return { exists: true, appId, data, revision: saved.revision, updatedAt: saved.updated_at };
+  return { exists: true, appId, data: prepared, revision: saved.revision, updatedAt: saved.updated_at };
 }
 
 async function recordVersion(env, userId, appId, revision, serialized, createdAt) {
