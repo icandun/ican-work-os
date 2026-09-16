@@ -23,4 +23,13 @@ const restore=await req('/apps/ican-work-os/versions/1/restore','POST',{baseRevi
 const conflict=await req('/apps/ican-work-os/state','PUT',{data:upgraded,baseRevision:1},token);assert.equal(conflict.status,409);
 assert.equal((await req('/apps/ican-work-os/state','GET')).status,401);
 const other=await req('/auth/dev','POST',{email:'other-qa@example.local'});const isolated=await req('/apps/ican-work-os/state','GET',null,other.data.token);assert.equal(isolated.data.exists,false);
-console.log('PASS: version guard and old restore rejection retain KPI state; CAS conflict, unauthenticated rejection and account isolation. In-memory SQLite; not a deployed D1 test.');sqlite.close();
+console.log('PASS: version guard and old restore rejection retain KPI state; CAS conflict, unauthenticated rejection and account isolation. In-memory SQLite; not a deployed D1 test.');
+const legacyHabit={habits:[{id:'h',name:'Habit',group:'Test',points:10,addons:[]}],checks:{}};
+assert.equal((await req('/apps/habit-ican/state','PUT',{data:legacyHabit,baseRevision:0},token)).status,200);
+const habit={...legacyHabit,habitVersion:1,checks:{'2026-09-16':{h:false}},snapshots:{'2026-09-16':{habits:legacyHabit.habits,legacy:false}}};
+assert.equal((await req('/apps/habit-ican/state','PUT',{data:habit,baseRevision:1},token)).status,200);
+assert.equal((await req('/apps/habit-ican/state','PUT',{data:legacyHabit,baseRevision:2},token)).status,426);
+assert.equal((await req('/apps/habit-ican/versions/1/restore','POST',{baseRevision:2},token)).status,426);
+assert.equal((await req('/apps/habit-ican/state','GET',null,token)).data.data.checks['2026-09-16'].h,false);
+console.log('PASS: Habit false status, snapshot persistence, legacy write and restore guard.');
+sqlite.close();

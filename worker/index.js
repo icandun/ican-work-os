@@ -191,6 +191,8 @@ async function saveDocument(env, userId, appId, data, baseRevision) {
     return { conflict: true, remote: current };
   }
 
+  if (appId === "habit-ican" && Number(current?.data?.habitVersion||0)>Number(data?.habitVersion||0)) throw new OutcomeStateError('habit_client_update_required','Muat ulang Habit sebelum menyimpan. Histori terbaru tetap aman.',426);
+  const validity=validateAppState(appId,data);if(!validity.ok)throw new OutcomeStateError('invalid_schema',validity.code,422);
   if (appId === "ican-work-os") guardOutcomeState(current?.data, data);
   const prepared = appId === "ican-work-os" ? prepareWorkTimerDocument(current?.data, data) : data;
   const now = Date.now();

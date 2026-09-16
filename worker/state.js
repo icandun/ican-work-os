@@ -26,6 +26,15 @@ function isEmptyTriagePlaceholder(entry) {
 }
 
 function validateHabitState(data) {
+  if(data.habitEncoding!=null) {
+    if(data.habitVersion!==1||data.habitEncoding!=='definitions-v1'||!Array.isArray(data.definitions)||!isPlainObject(data.snapshots))return invalid('invalid_habit_encoding');
+    const snapshots={};
+    for(const [date,snap] of Object.entries(data.snapshots)) {
+      if(!isPlainObject(snap)||!Number.isInteger(snap.definition)||!Array.isArray(data.definitions[snap.definition]))return invalid('missing_habit_definition',date);
+      snapshots[date]={...snap,habits:data.definitions[snap.definition]};
+    }
+    data={...data,snapshots};
+  }
   if (!Array.isArray(data.habits)) return invalid("habits_must_be_array");
   if (!isPlainObject(data.checks)) return invalid("checks_must_be_object");
   if (data.habits.length > 200) return invalid("too_many_habits");
@@ -42,10 +51,20 @@ function validateHabitState(data) {
     if (Object.keys(day).length > 1000) return invalid("too_many_daily_checks", date);
     for (const [id, checked] of Object.entries(day)) {
       if (!SAFE_ID.test(id)) return invalid("invalid_check_id", `${date}.${id}`);
-      if (checked !== true) return invalid("check_value_must_be_true", `${date}.${id}`);
+      if (checked !== true && !(data.habitVersion===1 && checked===false)) return invalid("check_value_must_be_true", `${date}.${id}`);
     }
   }
 
+  if(data.habitVersion!=null) {
+    if(data.habitVersion!==1)return invalid('unsupported_habit_schema');
+    if(!isPlainObject(data.snapshots))return invalid('snapshots_must_be_object');
+    for(const [date,snapshot] of Object.entries(data.snapshots)) {
+      if(!isValidDateKey(date)||!isPlainObject(snapshot)||!Array.isArray(snapshot.habits)||snapshot.habits.length>200||typeof snapshot.legacy!=='boolean')return invalid('invalid_habit_snapshot',date);
+      const snapshotIds=new Set();
+      for(const h of snapshot.habits){const result=validateHabit(h,snapshotIds);if(!result.ok)return result;}
+    }
+    for(const date of Object.keys(data.checks)){if(!data.snapshots[date])return invalid('missing_habit_snapshot',date);const ids=new Set(data.snapshots[date].habits.flatMap(h=>[h.id,...(h.addons||[]).map(a=>a.id)]));for(const id of Object.keys(data.checks[date]))if(!ids.has(id))return invalid('check_without_definition',date+'.'+id);}
+  }
   return valid();
 }
 
