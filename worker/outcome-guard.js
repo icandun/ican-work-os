@@ -13,6 +13,10 @@ export function guardOutcomeState(current,incoming) {
   const ids=new Set();
   for(const row of incoming[key]) {
    if(!row || typeof row!=='object' || typeof row.id!=='string' || !row.id || ids.has(row.id)) throw new OutcomeStateError('invalid_outcome_record',`ID ${key} tidak valid atau duplikat.`);
+   if(key==='units') {
+    if(row.image!=null&&row.image!==''&&(typeof row.image!=='string'||row.image.length>32768||!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(row.image)))throw new OutcomeStateError('invalid_unit_image','Logo unit harus berupa gambar kecil PNG, JPG atau WebP.');
+    if(row.color!=null&&row.color!==''&&!['#5268a0','#886ba4','#3a7882','#927048','#687b54','#956275','#637c94','#8d705f'].includes(row.color))throw new OutcomeStateError('invalid_unit_color','Warna identitas unit tidak valid.');
+   }
    ids.add(row.id);
   }
  }
