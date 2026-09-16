@@ -1,3 +1,4 @@
+import { guardOutcomeState, OutcomeStateError } from "./outcome-guard.js";
 import { normalizeAppState, validateAppState } from "./state.js";
 import { prepareWorkTimerDocument, TimerPolicyError } from "./work-timer-guard.js";
 
@@ -23,6 +24,9 @@ export default {
       return env.ASSETS.fetch(request);
     } catch (error) {
       if (error instanceof HttpError) {
+        return json({ error: error.code, message: error.message }, error.status, request, env);
+      }
+      if (error instanceof OutcomeStateError) {
         return json({ error: error.code, message: error.message }, error.status, request, env);
       }
       if (error instanceof TimerPolicyError) {
@@ -187,6 +191,7 @@ async function saveDocument(env, userId, appId, data, baseRevision) {
     return { conflict: true, remote: current };
   }
 
+  if (appId === "ican-work-os") guardOutcomeState(current?.data, data);
   const prepared = appId === "ican-work-os" ? prepareWorkTimerDocument(current?.data, data) : data;
   const now = Date.now();
   const serialized = JSON.stringify(prepared);
