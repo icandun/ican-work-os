@@ -1,0 +1,35 @@
+// Real worker request handlers and SQL, with an isolated in-memory SQLite D1 adapter.
+// No production endpoint, credentials, or data. Node 22+.
+import { DatabaseSync } from 'node:sqlite';
+import {readFileSync,readdirSync} from 'node:fs';
+import assert from 'node:assert/strict';
+import worker from '../worker/index.js';
+import {OUTCOME_COLLECTIONS} from '../worker/outcome-guard.js';
+const sqlite=new DatabaseSync(':memory:');
+for(const file of readdirSync(new URL('../migrations/',import.meta.url)).filter(f=>f.endsWith('.sql')).sort()) sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
+const db={prepare(sql){return {args:[],bind(...args){this.args=args;return this;},async first(){return sqlite.prepare(sql).get(...this.args)||null;},async all(){return {results:sqlite.prepare(sql).all(...this.args)};},async run(){return sqlite.prepare(sql).run(...this.args);}};},async batch(statements){return Promise.all(statements.map(s=>s.run()));}};
+const env={DB:db,ALLOW_DEV_AUTH:'true',ALLOWED_ORIGINS:'http://127.0.0.1:8788'};
+globalThis.fetch=async (url,options)=>{assert.ok(String(url).startsWith('http://127.0.0.1:8788/api/'));return worker.fetch(new Request(url,options),env);};
+await import('./integration.mjs');
+const req=async(path,method='GET',body,token)=>{const r=await worker.fetch(new Request(`http://127.0.0.1:8788/api${path}`,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})},...(body?{body:JSON.stringify(body)}:{})}),env);return {status:r.status,data:await r.json()};};
+const login=await req('/auth/dev','POST',{email:'outcome-qa@example.local'});const token=login.data.token;
+const old={triage:[],execLog:[],companies:['PRVA'],subcats:{PRVA:[]},outcomes:[]};
+assert.equal((await req('/apps/ican-work-os/state','PUT',{data:old,baseRevision:0},token)).status,200);
+const upgraded={...old,oesVersion:1,...Object.fromEntries(OUTCOME_COLLECTIONS.map(k=>[k,[]])),kpis:[{id:'k',target:100}]};
+const saved=await req('/apps/ican-work-os/state','PUT',{data:upgraded,baseRevision:1},token);assert.equal(saved.status,200);
+const rejected=await req('/apps/ican-work-os/state','PUT',{data:old,baseRevision:2},token);assert.equal(rejected.status,426);
+const unchanged=await req('/apps/ican-work-os/state','GET',null,token);assert.equal(unchanged.data.revision,2);assert.equal(unchanged.data.data.kpis[0].target,100);
+const restore=await req('/apps/ican-work-os/versions/1/restore','POST',{baseRevision:2},token);assert.equal(restore.status,426);
+const conflict=await req('/apps/ican-work-os/state','PUT',{data:upgraded,baseRevision:1},token);assert.equal(conflict.status,409);
+assert.equal((await req('/apps/ican-work-os/state','GET')).status,401);
+const other=await req('/auth/dev','POST',{email:'other-qa@example.local'});const isolated=await req('/apps/ican-work-os/state','GET',null,other.data.token);assert.equal(isolated.data.exists,false);
+console.log('PASS: version guard and old restore rejection retain KPI state; CAS conflict, unauthenticated rejection and account isolation. In-memory SQLite; not a deployed D1 test.');
+const legacyHabit={habits:[{id:'h',name:'Habit',group:'Test',points:10,addons:[]}],checks:{}};
+assert.equal((await req('/apps/habit-ican/state','PUT',{data:legacyHabit,baseRevision:0},token)).status,200);
+const habit={...legacyHabit,habitVersion:1,checks:{'2026-09-16':{h:false}},snapshots:{'2026-09-16':{habits:legacyHabit.habits,legacy:false}}};
+assert.equal((await req('/apps/habit-ican/state','PUT',{data:habit,baseRevision:1},token)).status,200);
+assert.equal((await req('/apps/habit-ican/state','PUT',{data:legacyHabit,baseRevision:2},token)).status,426);
+assert.equal((await req('/apps/habit-ican/versions/1/restore','POST',{baseRevision:2},token)).status,426);
+assert.equal((await req('/apps/habit-ican/state','GET',null,token)).data.data.checks['2026-09-16'].h,false);
+console.log('PASS: Habit false status, snapshot persistence, legacy write and restore guard.');
+sqlite.close();

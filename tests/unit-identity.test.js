@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {guardOutcomeState,OUTCOME_COLLECTIONS} from '../worker/outcome-guard.js';
+const state=image=>({oesVersion:1,...Object.fromEntries(OUTCOME_COLLECTIONS.map(k=>[k,k==='units'?[{id:'u',image,color:'#5268a0'}]:[]]))});
+test('bounded unit logo validates without changing state, remote and SVG rejected',()=>{const s=state('data:image/webp;base64,YWJj');assert.equal(guardOutcomeState(null,s),s);for(const image of ['https://host/image.png','data:image/svg+xml;base64,YWJj','data:image/png;base64,'+'a'.repeat(32769)])assert.throws(()=>guardOutcomeState(null,state(image)));assert.doesNotThrow(()=>guardOutcomeState(null,state('')));});
